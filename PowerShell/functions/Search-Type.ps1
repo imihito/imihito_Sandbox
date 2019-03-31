@@ -1,4 +1,5 @@
-﻿<#
+﻿function Search-Type {
+<#
 .SYNOPSIS
 Search type from loaded assemblies.
 ロード済みアセンブリー内から型を検索します。
@@ -36,7 +37,6 @@ System.Type
 System.Type
 By default, return all public type in loaded assemblies.
 #>
-function Search-Type {
     [CmdletBinding()]
     [OutputType([type])]
     param (
