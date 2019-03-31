@@ -53,7 +53,7 @@ By default, return all public type in loaded assemblies.
         [string]$FullName
         ,
         # Include not public types.
-        [bool]$Force
+        [switch]$Force
     )
     begin {
         # Declare foreach variables for IntelliSense.
