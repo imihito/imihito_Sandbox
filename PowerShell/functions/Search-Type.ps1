@@ -51,6 +51,9 @@ By default, return all public type in loaded assemblies.
         ,
         [SupportsWildcards()]
         [string]$FullName
+        ,
+        # Include not public types.
+        [bool]$Force
     )
     begin {
         # Declare foreach variables for IntelliSense.
@@ -59,8 +62,8 @@ By default, return all public type in loaded assemblies.
     process {
         foreach ($asm in [System.AppDomain]::CurrentDomain.GetAssemblies()) {
             foreach ($t in $asm.GetTypes()) {
-                # Public only.
-                if (-not $t.IsPublic) { continue }
+                # Public only othewise Force switch.
+                if (-not ($Force -or $t.IsPublic)) { continue }
 
                 if (-not $RootType.IsAssignableFrom($t)) { continue }
 
