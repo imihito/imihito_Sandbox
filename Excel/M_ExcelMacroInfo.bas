@@ -60,9 +60,12 @@ Private Sub PrintPublicSubProcedureInfo(codeText As String)
     Dim subDic As Scripting.Dictionary
     Set subDic = newDic()
     
+    Dim procName As String
+    
     Dim m As VBScript_RegExp_55.Match
     For Each m In publicSubSeacher.Execute(codeText)
-        Set subDic.Item(m.SubMatches.Item(0)) = newDic()
+        procName = m.SubMatches.Item(0)
+        Set subDic.Item(procName) = newDic()
     Next m
     
     
@@ -74,8 +77,9 @@ Private Sub PrintPublicSubProcedureInfo(codeText As String)
     )
     
     For Each m In shortcutkeySearcher.Execute(codeText)
-        If subDic.Exists(m.SubMatches.Item(0)) Then
-            subDic.Item(m.SubMatches.Item(0)).Item("ShortcutKey") = m.SubMatches.Item(1)
+        procName = m.SubMatches.Item(0)
+        If subDic.Exists(procName) Then
+            subDic.Item(procName).Item("ShortcutKey") = m.SubMatches.Item(1)
         End If
     Next m
     
@@ -88,8 +92,9 @@ Private Sub PrintPublicSubProcedureInfo(codeText As String)
     )
     
     For Each m In descriptionSearcher.Execute(codeText)
-        If subDic.Exists(m.SubMatches.Item(0)) Then
-            subDic.Item(m.SubMatches.Item(0)).Item("Description") = m.SubMatches.Item(1)
+        procName = m.SubMatches.Item(0)
+        If subDic.Exists(procName) Then
+            subDic.Item(procName).Item("Description") = m.SubMatches.Item(1)
         End If
     Next m
     
@@ -113,8 +118,14 @@ Private Sub PrintPublicSubProcedureInfo(codeText As String)
     Next k
 End Sub
 
-Private Function newDic() As Scripting.Dictionary
-    Set newDic = VBA.CreateObject("Scripting.Dictionary")
+Private Function newDic( _
+        Optional CompareMethod As VBA.VbCompareMethod = VBA.VbCompareMethod.vbBinaryCompare _
+    ) As Scripting.Dictionary
+    
+    Dim dic As Scripting.Dictionary
+    Set dic = VBA.CreateObject("Scripting.Dictionary")
+    dic.CompareMode = CompareMethod
+    Set newDic = dic
 End Function
 
 Private Function NewRegExp( _
