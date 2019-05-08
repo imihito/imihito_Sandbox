@@ -40,8 +40,17 @@ Public Function SortObject( _
 End Function
 
 'マージソートの本体
-    '値の一次元配列を渡すと、並びかえた場合の添え字を返す。
-Private Function getSortedIndexes(inValues() As Variant, inAscending As Boolean) As Long()
+    '値の一次元配列を渡すと、並びかえた場合の添え字の配列を返す。
+    'inValues       :比較したい値の入った一次元配列(任意の型の配列を許容するため、Variant 型)
+    'inAscending    :昇順か降順か。True なら昇順(小さい値から)。
+    
+    'return         :inValues の中身を inAscending の順番に取り出せる順番にした添え字配列
+
+'e.g.
+'getSortedIndexes(Array("a", "c", "b"), True) - > (0, 2, 1)
+'getSortedIndexes(Array("b", "c", "b"), False) -> (1, 0, 2)
+Private Function getSortedIndexes(inValues As Variant, inAscending As Boolean) As Long()
+    If Not VBA.IsArray(inValues) Then Err.Raise 13
     
     Dim inUseUpperResult As Long
     If inAscending Then
@@ -76,7 +85,7 @@ End Function
 
 
 Private Sub recurseMergeSort( _
-        inValues() As Variant, _
+        inValues As Variant, _
         inSrcIndexes() As Long, _
         outDestIndexes() As Long, _
         inStart As Long, _
