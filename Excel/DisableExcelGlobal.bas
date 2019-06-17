@@ -12,7 +12,7 @@ Option Private Module
 
 'ほとんどのメンバーの定義を上書き(無効化)。
 'Excel以外のVBAホストからExcelを操作するとき用。
-#Const DisableForExternal = True
+#Const DisableForExternal = False
 
 'Public Sub Application(): End Sub
 
