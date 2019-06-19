@@ -39,6 +39,35 @@ Public Function SortObject( _
     
 End Function
 
+
+Public Function SortDictionaryByKey( _
+                 inDictionary As Object, _
+        Optional inAscending As Boolean = True _
+    ) As Object 'As Scripting.Dictionary
+    
+    Dim k() As Variant
+    k = inDictionary.Keys()
+    
+    Dim sIndexes() As Long
+    sIndexes = getSortedIndexes(k, True)
+    
+    Dim v() As Variant
+    v = inDictionary.Items()
+    
+    Dim sortedDic As Object 'As Scripting.Dictionary
+    Set sortedDic = VBA.CreateObject("Scripting.Dictionary")
+    sortedDic.CompareMode = inDictionary.CompareMode
+    
+    Dim i As Long
+    For i = LBound(sIndexes) To UBound(sIndexes)
+        sortedDic.Add k(sIndexes(i)), v(sIndexes(i))
+    Next i
+    
+    Set SortDictionaryByKey = sortedDic
+    
+End Function
+
+
 'マージソートの本体
     '値の一次元配列を渡すと、並びかえた場合の添え字の配列を返す。
     'inValues       :比較したい値の入った一次元配列(任意の型の配列を許容するため、Variant 型)
