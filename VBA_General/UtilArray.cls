@@ -9,14 +9,18 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 
+'配列を要素数0で初期化するAPI。
+    'cDimsは次元数。
+    'ppsaOutは配列変数。
 'https://docs.microsoft.com/ja-jp/previous-versions/windows/desktop/api/oleauto/nf-oleauto-safearrayallocdescriptor
 Private Declare PtrSafe Function SafeArrayAllocDescriptor Lib "oleaut32" ( _
         ByVal cDims As Long, _
         ByRef ppsaOut() As Any _
     ) As Long
 
-Public Function CreateEmptyArray(iElementType As VBA.VbVarType) As Variant
-    Select Case iElementType
+'要素数0の1次元配列を作成する。
+Public Function CreateEmptyArray(inElementType As VBA.VbVarType) As Variant
+    Select Case inElementType
         Case vbInteger:     Let CreateEmptyArray = EmptyIntegerArray
         Case vbLong:        Let CreateEmptyArray = EmptyLongArray
         Case vbSingle:      Let CreateEmptyArray = EmptySingleArray
@@ -77,7 +81,7 @@ Public Property Get EmptyVariantArray() As Variant()
 End Property
 
 Public Property Get EmptyByteArray() As Byte()
-    Let EmptyByteArray = VBA.vbNullString
+    Let EmptyByteArray = VBA.Constants.vbNullString
 End Property
 
 #If Win64 Then
@@ -86,35 +90,38 @@ Public Property Get EmptyLongLongArray() As LongLong()
 End Property
 #End If
 
-'配列の次元数を取得する。初期化していない動的配列の場合は0
-Public Function DimensionsOf(ByRef iArray As Variant) As Long
-    If Not VBA.IsArray(iArray) Then Err.Raise 13
 
-    'VBAの多次元配列の次元の上限
+'配列の次元数を取得する。初期化していない動的配列の場合は0。
+Public Function DimensionsOf(ByRef inArray As Variant) As Long '0 To 64
+    If Not VBA.Information.IsArray(inArray) Then Err.Raise 13
+    
+    'VBAの多次元配列の次元の上限。
     Const MAX_DIMENSION = 64
 
     Dim d As Long, no_mean_var As Long
     On Error Resume Next
         For d = 1 To MAX_DIMENSION
-            no_mean_var = LBound(iArray, d)
+            no_mean_var = LBound(inArray, d)
             If Err.Number <> 0 Then Exit For
         Next d
     On Error GoTo 0
 
-    'VBAのFor文は完走すると指定した数値+1になる
+    'VBAのFor文は完走すると指定した数値+1になる。
     Let DimensionsOf = (d - 1) '0 To 64
 End Function
 
+'配列の要素数を取得する。
 Public Function SizeOf( _
-        ByRef iArray As Variant, _
-        Optional iDimension As Long = 1 _
+           ByRef inArray As Variant, _
+        Optional inDimension As Long = 1 _
     ) As Long
-    Let SizeOf = UBound(iArray, iDimension) - LBound(iArray, iDimension) + 1
+    
+    Let SizeOf = UBound(inArray, inDimension) - LBound(inArray, inDimension) + 1
 End Function
 
-Public Function CountAll(ByRef iArray As Variant) As Long
+Public Function CountAll(ByRef inArray As Variant) As Long
     Dim dimCnt As Long
-    dimCnt = Me.DimensionsOf(iArray)
+    dimCnt = Me.DimensionsOf(inArray)
     If dimCnt = 0 Then Exit Function 'return 0
     
     Dim sumSize As Long
@@ -122,8 +129,57 @@ Public Function CountAll(ByRef iArray As Variant) As Long
     
     Dim d As Long
     For d = 1 To dimCnt
-        sumSize = sumSize * Me.SizeOf(iArray, d)
+        sumSize = sumSize * Me.SizeOf(inArray, d)
     Next d
     
     Let CountAll = sumSize
 End Function
+
+
+'配列の下限も変えられる ReDim Preserve。
+    'inoutOneDimArray
+        '下限を変えたい1次元配列。
+        'これを直接書き換える。
+    'inLBound
+        '新しい下限。
+    'inUBound
+        '新しい上限。
+        '未指定時はinLBoundに合わせて自動調整。
+        'inLengthと排他。inUBoundが優先。
+    'inLength
+        'ReDim後の配列の長さ。
+        '未指定時はinoutOneDimArrayと同じ大きさ。
+        
+'参考:https://twitter.com/excelspeedup/status/1143362854856167424
+Public Sub ReDimPreserve( _
+           ByRef inoutOneDimArray As Variant, _
+                 inLBound As Long, _
+        Optional inUBound As Long = -2147483648#, _
+        Optional inLength As Long = 0 _
+    )
+    Const LongMinValue As Long = -2147483648#
+    
+    '2次元配列以上をはじく。
+    Dim dimCnt As Long
+    dimCnt = Me.DimensionsOf(inoutOneDimArray)
+    If dimCnt > 1 Then Err.Raise 13
+    
+    
+    '以降は1次元配列か未初期化配列。
+    
+    Dim arraySize As Long
+    If inUBound <> LongMinValue Then
+        'inUBoundが指定されていれば大きさは求まる。
+        arraySize = inUBound - inLBound + 1
+    ElseIf inLength > 0 Then
+        'inLengthが指定されている場合。
+        arraySize = inLength
+    Else
+        'inUBound・inLengthともに未指定なら元の配列の大きさ(dimCnt = 0ならエラー)。
+        arraySize = Me.SizeOf(inoutOneDimArray, 1)
+    End If
+    
+    ReDim Preserve inoutOneDimArray(inLBound To inLBound + arraySize - 1)
+    
+End Sub
+
