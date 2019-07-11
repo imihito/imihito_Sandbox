@@ -6,7 +6,8 @@ Public Function SortObject( _
                  inCollection As VBA.Collection, _
                  inProcName As String, _
         Optional inCallType As VBA.VbCallType = VBA.VbCallType.VbGet, _
-        Optional inAscending As Boolean = True _
+        Optional inAscending As Boolean = True, _
+        Optional inCompare As VBA.VbCompareMethod = VBA.VbCompareMethod.vbBinaryCompare _
     ) As VBA.Collection
     
     Select Case inCallType
@@ -30,7 +31,7 @@ Public Function SortObject( _
     
     'ソートした添え字を取得。
     Dim indexes() As Long
-    indexes = getSortedIndexes(sortKeys, inAscending)
+    indexes = getSortedIndexes(sortKeys, inAscending, inCompare)
     
     '出力用に入れ直し。
     Dim returnCol As VBA.Collection
@@ -53,7 +54,7 @@ Public Function SortDictionaryByKey( _
     sortKeys = inDictionary.Keys()
     
     Dim indexes() As Long
-    indexes = getSortedIndexes(sortKeys, inAscending)
+    indexes = getSortedIndexes(sortKeys, inAscending, inDictionary.CompareMode)
     
     Dim itms() As Variant
     itms = inDictionary.Items()
@@ -85,7 +86,8 @@ End Function
 'getSortedIndexes(Array("b", "c", "b"), False) -> (1, 0, 2)
 Private Function getSortedIndexes( _
         inValues As Variant, _
-        inAscending As Boolean _
+        inAscending As Boolean, _
+        inCompare As VBA.VbCompareMethod _
     ) As Long()
     
     If Not VBA.Information.IsArray(inValues) Then Err.Raise 13
@@ -115,7 +117,8 @@ Private Function getSortedIndexes( _
             getSortedIndexes, _
             LBound(inValues), _
             UBound(inValues) - LBound(inValues) + 1, _
-            inUseUpperResult _
+            inUseUpperResult, _
+            inCompare _
         )
     
 End Function
@@ -127,7 +130,8 @@ Private Sub recurseMergeSort( _
         outDestIndexes() As Long, _
         inStart As Long, _
         inLength As Long, _
-        inUseUpperResult As Long _
+        inUseUpperResult As Long, _
+        inCompare As VBA.VbCompareMethod _
     )
 
     Dim halfLen As Long
@@ -135,10 +139,10 @@ Private Sub recurseMergeSort( _
 
     '前半部分をソート
     If halfLen >= 2 Then _
-        Call recurseMergeSort(inValues, outDestIndexes, inSrcIndexes, inStart, halfLen, inUseUpperResult)
+        Call recurseMergeSort(inValues, outDestIndexes, inSrcIndexes, inStart, halfLen, inUseUpperResult, inCompare)
     '後半部分をソート
     If inLength - halfLen >= 2 Then _
-        Call recurseMergeSort(inValues, outDestIndexes, inSrcIndexes, inStart + halfLen, inLength - halfLen, inUseUpperResult)
+        Call recurseMergeSort(inValues, outDestIndexes, inSrcIndexes, inStart + halfLen, inLength - halfLen, inUseUpperResult, inCompare)
     
     
     '前半部分の添え字と最大値
@@ -164,7 +168,9 @@ Private Sub recurseMergeSort( _
     For destIndex = inStart To destLimit Step 1
         If compareM( _
                 inValues(inSrcIndexes(lwIndex)), _
-                inValues(inSrcIndexes(upIndex))) = inUseUpperResult Then
+                inValues(inSrcIndexes(upIndex)), _
+                inCompare _
+            ) = inUseUpperResult Then
             
             'upIndexの方が値が小さい場合（昇順の場合）
             outDestIndexes(destIndex) = inSrcIndexes(upIndex)
@@ -197,7 +203,19 @@ Private Sub recurseMergeSort( _
 
 End Sub
 
-Private Function compareM(inValue1 As Variant, inValue2 As Variant) As Long
+Private Function compareM( _
+        inValue1 As Variant, _
+        inValue2 As Variant, _
+        inCompare As VBA.VbCompareMethod _
+    ) As Long
+    Select Case VBA.VbVarType.vbString
+        Case VBA.Information.VarType(inValue1), _
+             VBA.Information.VarType(inValue2)
+            Let compareM = VBA.Strings.StrComp(inValue1, inValue2, inCompare)
+            Exit Function
+    End Select
+    
+    
     If inValue1 < inValue2 Then Let compareM = -1: Exit Function
     If inValue1 > inValue2 Then Let compareM = 1:  Exit Function
     Let compareM = 0
