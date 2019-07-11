@@ -46,3 +46,26 @@ Private Sub TestOfSortObject()
     Stop
     
 End Sub
+
+
+Private Sub TestOfSort1DimValueArray()
+    Dim a() As Variant
+    a = Array(1, "a", "A", "b")
+    
+    Dim b() As Variant
+    b = Sort1DimValueArray(a, True, vbBinaryCompare)
+    
+    Debug.Assert "1Aab" = VBA.Strings.Join(b, VBA.Constants.vbNullString)
+    
+    Dim c() As Variant
+    c = Sort1DimValueArray(a, True, vbTextCompare)
+    
+    Debug.Assert "1aAb" = VBA.Strings.Join(c, VBA.Constants.vbNullString)
+    
+    Dim d() As Variant
+    d = Sort1DimValueArray(a, False, vbBinaryCompare)
+    
+    Debug.Assert "baA1" = VBA.Strings.Join(d, VBA.Constants.vbNullString)
+    
+    Stop
+End Sub

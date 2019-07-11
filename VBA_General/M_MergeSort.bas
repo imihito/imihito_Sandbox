@@ -73,6 +73,37 @@ Public Function SortDictionaryByKey( _
 End Function
 
 
+Public Function Sort1DimValueArray( _
+                 in1DimArray As Variant, _
+        Optional inAscending As Boolean = True, _
+        Optional inCompare As VBA.VbCompareMethod = VBA.VbCompareMethod.vbBinaryCompare _
+    ) As Variant
+    
+    internalSort1DimValueArray in1DimArray, inAscending, inCompare, Sort1DimValueArray
+    
+End Function
+
+'optimize Array Copy.
+Private Sub internalSort1DimValueArray( _
+        in1DimArray As Variant, _
+        inAscending As Boolean, _
+        inCompare As VBA.VbCompareMethod, _
+        outResult1DimArray As Variant _
+    )
+    
+    Dim indexes() As Long
+    indexes = getSortedIndexes(in1DimArray, inAscending, inCompare)
+    
+    'Duplicate type, LBound, UBound.
+    outResult1DimArray = in1DimArray
+    
+    Dim i As Long
+    For i = LBound(indexes) To UBound(indexes)
+        outResult1DimArray(i) = in1DimArray(indexes(i))
+    Next i
+    
+End Sub
+
 
 'マージソートの本体
     '値の一次元配列を渡すと、並びかえた場合の添え字の配列を返す。
