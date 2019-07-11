@@ -49,7 +49,7 @@ Public Function SortDictionaryByKey( _
     k = inDictionary.Keys()
     
     Dim sIndexes() As Long
-    sIndexes = getSortedIndexes(k, True)
+    sIndexes = getSortedIndexes(k, inAscending)
     
     Dim v() As Variant
     v = inDictionary.Items()
