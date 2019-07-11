@@ -3,36 +3,40 @@ Option Explicit
 
 'オブジェクトのメンバーでソート(非破壊的処理)。
 Public Function SortObject( _
-                 inBaseCollection As VBA.Collection, _
-                 inMemberName As String, _
-        Optional inCallType As VBA.VbCallType = VbGet, _
+                 inCollection As VBA.Collection, _
+                 inProcName As String, _
+        Optional inCallType As VBA.VbCallType = VBA.VbCallType.VbGet, _
         Optional inAscending As Boolean = True _
     ) As VBA.Collection
     
     Select Case inCallType
-        Case VbLet, VbSet
+        Case VBA.VbCallType.VbLet, _
+             VBA.VbCallType.VbSet
             Call Err.Raise(5, "SortObject", "inCallTypeにはVbGetもしくはVbMethodを指定してください")
     End Select
     
-    Dim keyValues()     As Variant: ReDim keyValues(1 To inBaseCollection.Count)
-    Dim bufObjects()    As Object:  ReDim bufObjects(1 To inBaseCollection.Count)
+    Dim sortKeys() As Variant
+    ReDim sortKeys(1 To inCollection.Count())
+    Dim objs() As Object
+    ReDim objs(1 To inCollection.Count())
     
-    Dim i As Long, obj As Object
-    i = LBound(keyValues)
-    For Each obj In inBaseCollection
-        Let keyValues(i) = VBA.CallByName(obj, inMemberName, inCallType)
-        Set bufObjects(i) = obj
+    Dim i As Long, o As Object
+    i = LBound(sortKeys)
+    For Each o In inCollection
+        Let sortKeys(i) = VBA.Interaction.CallByName(o, inProcName, inCallType)
+        Set objs(i) = o
         i = i + 1
-    Next obj
+    Next o
     
     'ソートした添え字を取得。
-    Dim sortedIndexes() As Long
-    sortedIndexes = getSortedIndexes(keyValues, inAscending)
+    Dim indexes() As Long
+    indexes = getSortedIndexes(sortKeys, inAscending)
     
     '出力用に入れ直し。
-    Dim returnCol As VBA.Collection: Set returnCol = New VBA.Collection
-    For i = 1 To inBaseCollection.Count
-        returnCol.Add bufObjects(sortedIndexes(i))
+    Dim returnCol As VBA.Collection
+    Set returnCol = New VBA.Collection
+    For i = LBound(indexes) To UBound(indexes)
+        returnCol.Add objs(indexes(i))
     Next i
     
     Set SortObject = returnCol
@@ -45,27 +49,28 @@ Public Function SortDictionaryByKey( _
         Optional inAscending As Boolean = True _
     ) As Object 'As Scripting.Dictionary
     
-    Dim k() As Variant
-    k = inDictionary.Keys()
+    Dim sortKeys() As Variant
+    sortKeys = inDictionary.Keys()
     
-    Dim sIndexes() As Long
-    sIndexes = getSortedIndexes(k, inAscending)
+    Dim indexes() As Long
+    indexes = getSortedIndexes(sortKeys, inAscending)
     
-    Dim v() As Variant
-    v = inDictionary.Items()
+    Dim itms() As Variant
+    itms = inDictionary.Items()
     
-    Dim sortedDic As Object 'As Scripting.Dictionary
-    Set sortedDic = VBA.CreateObject("Scripting.Dictionary")
-    sortedDic.CompareMode = inDictionary.CompareMode
+    Dim returnDic As Object 'As Scripting.Dictionary
+    Set returnDic = VBA.Interaction.CreateObject("Scripting.Dictionary")
+    returnDic.CompareMode = inDictionary.CompareMode
     
     Dim i As Long
-    For i = LBound(sIndexes) To UBound(sIndexes)
-        sortedDic.Add k(sIndexes(i)), v(sIndexes(i))
+    For i = LBound(indexes) To UBound(indexes)
+        returnDic.Add sortKeys(indexes(i)), itms(indexes(i))
     Next i
     
-    Set SortDictionaryByKey = sortedDic
+    Set SortDictionaryByKey = returnDic
     
 End Function
+
 
 
 'マージソートの本体
@@ -78,8 +83,12 @@ End Function
 'e.g.
 'getSortedIndexes(Array("a", "c", "b"), True) - > (0, 2, 1)
 'getSortedIndexes(Array("b", "c", "b"), False) -> (1, 0, 2)
-Private Function getSortedIndexes(inValues As Variant, inAscending As Boolean) As Long()
-    If Not VBA.IsArray(inValues) Then Err.Raise 13
+Private Function getSortedIndexes( _
+        inValues As Variant, _
+        inAscending As Boolean _
+    ) As Long()
+    
+    If Not VBA.Information.IsArray(inValues) Then Err.Raise 13
     
     Dim inUseUpperResult As Long
     If inAscending Then
@@ -106,9 +115,8 @@ Private Function getSortedIndexes(inValues As Variant, inAscending As Boolean) A
             getSortedIndexes, _
             LBound(inValues), _
             UBound(inValues) - LBound(inValues) + 1, _
-            inUseUpperResult)
-    
-    Erase basIndexes
+            inUseUpperResult _
+        )
     
 End Function
 
@@ -119,31 +127,41 @@ Private Sub recurseMergeSort( _
         outDestIndexes() As Long, _
         inStart As Long, _
         inLength As Long, _
-        inUseUpperResult As Long)
+        inUseUpperResult As Long _
+    )
 
-    Dim halfLen As Long: halfLen = CLng(inLength / 2)
+    Dim halfLen As Long
+    halfLen = CLng(inLength / 2)
 
     '前半部分をソート
-    If halfLen >= 2 Then:               Call recurseMergeSort(inValues, outDestIndexes, inSrcIndexes, inStart, halfLen, inUseUpperResult):
+    If halfLen >= 2 Then _
+        Call recurseMergeSort(inValues, outDestIndexes, inSrcIndexes, inStart, halfLen, inUseUpperResult)
     '後半部分をソート
-    If inLength - halfLen >= 2 Then:    Call recurseMergeSort(inValues, outDestIndexes, inSrcIndexes, inStart + halfLen, inLength - halfLen, inUseUpperResult):
+    If inLength - halfLen >= 2 Then _
+        Call recurseMergeSort(inValues, outDestIndexes, inSrcIndexes, inStart + halfLen, inLength - halfLen, inUseUpperResult)
     
     
     '前半部分の添え字と最大値
-    Dim lwIndex   As Long: lwIndex = inStart
-    Dim lwMax     As Long: lwMax = inStart + halfLen - 1
+    Dim lwIndex As Long
+    lwIndex = inStart
+    Dim lwLimit As Long
+    lwLimit = inStart + halfLen - 1
     
     '後半部分の添え字と最大値
-    Dim upIndex   As Long: upIndex = inStart + halfLen
-    Dim upMax     As Long: upMax = inStart + inLength - 1
+    Dim upIndex As Long
+    upIndex = inStart + halfLen
+    Dim upLimit As Long
+    upLimit = inStart + inLength - 1
     
     'ソート後配列の添え字と最大値
-    Dim destIndex As Long: destIndex = inStart
-    Dim destMax   As Long: destMax = inStart + inLength - 1
+    Dim destIndex As Long
+    destIndex = inStart
+    Dim destLimit As Long
+    destLimit = inStart + inLength - 1
 
-    Dim leftIndex As Long   '片方が終わった時の余り用
+    Dim remainIndex As Long '片方が終わった時の余り用
     
-    For destIndex = inStart To destMax Step 1
+    For destIndex = inStart To destLimit Step 1
         If compareM( _
                 inValues(inSrcIndexes(lwIndex)), _
                 inValues(inSrcIndexes(upIndex))) = inUseUpperResult Then
@@ -151,14 +169,20 @@ Private Sub recurseMergeSort( _
             'upIndexの方が値が小さい場合（昇順の場合）
             outDestIndexes(destIndex) = inSrcIndexes(upIndex)
             
-            If upIndex = upMax Then leftIndex = lwIndex: Exit For
+            If upIndex = upLimit Then
+                remainIndex = lwIndex
+                Exit For
+            End If
             upIndex = upIndex + 1
             
         Else
             '値が同じ or lwIndexの方が値が小さい場合（昇順の場合）
             outDestIndexes(destIndex) = inSrcIndexes(lwIndex)
             
-            If lwIndex = lwMax Then leftIndex = upIndex: Exit For
+            If lwIndex = lwLimit Then
+                remainIndex = upIndex
+                Exit For
+            End If
             lwIndex = lwIndex + 1
             
         End If
@@ -166,9 +190,9 @@ Private Sub recurseMergeSort( _
     
     '残りの分を代入
     'Next destIndexを飛ばした分インクリメントしてからスタート
-    For destIndex = destIndex + 1 To destMax Step 1
-        outDestIndexes(destIndex) = inSrcIndexes(leftIndex)
-        leftIndex = leftIndex + 1
+    For destIndex = destIndex + 1 To destLimit Step 1
+        outDestIndexes(destIndex) = inSrcIndexes(remainIndex)
+        remainIndex = remainIndex + 1
     Next destIndex
 
 End Sub
