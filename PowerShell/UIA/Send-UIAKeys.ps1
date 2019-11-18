@@ -1,10 +1,13 @@
-﻿using namespace System
+﻿# 使用するアセンブリや名前空間の指定(PowerShell 5.1以降の機能)
+using namespace System
 
+# UIAutomation 関連のアセンブリ群
 using assembly  UIAutomationClient
 using assembly  UIAutomationTypes
 using assembly  UIAutomationClientSideProviders
 using namespace System.Windows.Automation
 
+# SendKeys 用のアセンブリ
 using assembly  System.Windows.Forms
 using namespace System.Windows.Forms
 
