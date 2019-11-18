@@ -20,6 +20,7 @@ $InputObjectで指定された要素にキーストロークを送信します�
 System.Windows.Forms.SendKeys.SendWaitを使用するため、アクティブなウィンドウが変更されます。
 #>
     [CmdletBinding()]
+    [OutputType([System.Windows.Automation.AutomationElement])]
     Param(
         
         # キーストロークを送信する要素を指定します。
@@ -35,7 +36,7 @@ System.Windows.Forms.SendKeys.SendWaitを使用するため、アクティブな
         [Parameter(Mandatory = $true)]
         [string]$Keys
         ,
-        # キーストローク送信後待機する時間をミリ秒単位で指定します。
+        # キーストローク送信後、待機する時間をミリ秒単位で指定します。
         # $RestoreFocus スイッチを指定する場合は意図した動作になるよう調整が必要です。
         [ValidateRange(0, [int]::MaxValue)]
         [Alias('ms')]
