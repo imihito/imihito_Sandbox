@@ -47,13 +47,12 @@ General notes
             # 念のため大文字・小文字無視の辞書とする
             [Dictionary[string, string]]::new([System.StringComparer]::InvariantCultureIgnoreCase)
         # WMI 経由でドライブ情報を取得。
-        # DriveType が 4 のものがネットワークドライブで、
         # DeviceID が ドライブレター、ProviderName が 実際のパスとなる。
         Get-CimInstance -Query '
             SELECT 
                 DeviceID, ProviderName 
-            FROM Win32_LogicalDisk 
-                WHERE DriveType = 4' | 
+            FROM 
+                Win32_MappedLogicalDisk' | 
             ForEach-Object -Process {
                 $driveUncDic.Add($_.DeviceID, $_.ProviderName)
                 $_.Dispose()
@@ -77,8 +76,10 @@ General notes
             }
 
             [uri]$u = [uri]($p.ProviderPath)
-            [string]$localPath = $u.LocalPath
+            [string]$localPath = $u.LocalPath # この後よく使うので一旦変数に格納。
+
             if (-not $u.IsFile) {
+                # ファイル以外ならそのまま
                 $PSCmdlet.WriteObject($localPath)
                 continue
             }
