@@ -7,55 +7,63 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
+'JScript Environment for VBA (Support 64bit).
+    'update 2020.03.13
+    
+    'JScript を 64bit の VBA からも使用できるようにしたクラス。
+    'MSHTML.HTMLDocument 上で JScript を実行することで ScriptContorl の 32bit 制限を回避する。
+Public aaaaa
 Option Explicit
 
-'Instance JScript Function object
+'Instance JScript Function object.
 
 'e.g.
-    'Dim adder As Object: Set adder = JSFunc("a,b", "a+b") 'autoReturn = True
+    'Dim adder As Object: Set adder = JScriptEnvironment.Func("a,b", "a+b") 'inAutoReturn = True
     'Debug.Print adder(2, 6) '->8
 
     'Dim inRange As Object
-    'Set inRange = JSFunc("range,min,max", "v=range.Value;return min<=v&&v<=max;", False) 'autoReturn = False
+    'Set inRange = JScriptEnvironment.Func("range,min,max", "v=range.Value;return min<=v&&v<=max;", False) 'inAutoReturn = False
     'Excel.ActiveCell.Value() = 150
     'Debug.Print inRange(Excel.ActiveCell, 100, 200) '->True
 
 'Arguments
-'args
-    '`funcBody`内で使用する引数。
+'inArguments
+    '`inFunctionBody`内で使用する引数。
     '複数指定時はカンマ区切りで指定する。
     '参考:'[Function - JavaScript | MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Function)
-'funcBody
+'inFunctionBody
     '関数本文。
-'autoReturn
+'inAutoReturn
     '省略可能。省略時True。
-    'Trueのとき`funcBody`の先頭に`return `を追加する。
+    'Trueのとき`inFunctionBody`の先頭に`return `を追加する。
 
 'Return
     'インスタンスされたJScriptのfunctionオブジェクト。
 
-Public Function NewFunc( _
-        args As String, _
-        funcBody As String, _
-        Optional autoReturn As Boolean = True) As Object
-
+Public Function Func( _
+                 inArguments As String, _
+                 inFunctionBody As String, _
+        Optional inAutoReturn As Boolean = True _
+    ) As Object
+    
     Const EXEC_SCRIPT = _
             "this.createFunc=" & _
                 "function(args,funcBody){" & _
                     "return new Function(args,funcBody);}"
-
+    
     '各種初期化
     '関数オブジェクトのキャッシュ
     Static funcCache As Object 'As Scripting.Dictionary
-    If funcCache Is Nothing Then Set funcCache = VBA.CreateObject("Scripting.Dictionary")
-
+    If funcCache Is Nothing Then _
+        Set funcCache = VBA.Interaction.CreateObject("Scripting.Dictionary")
+    
     'JScript実行環境。参照を保持しないとインスタンスしたfunctionオブジェクトも消える
     Static htmlDoc    As Object 'As MSHTML.HTMLDocument
     Static createFunc As Object 'JScript function
     
     If htmlDoc Is Nothing Then
         Call funcCache.RemoveAll
-        Set htmlDoc = VBA.CreateObject("htmlfile")
+        Set htmlDoc = VBA.Interaction.CreateObject("htmlfile")
         
         'JScriptのグローバル変数に関数を定義
         Call htmlDoc.parentWindow.execScript(EXEC_SCRIPT)
@@ -67,11 +75,11 @@ Public Function NewFunc( _
 
     'キャッシュ用に整形
     Dim trimedArgs As String, trimedBody As String
-    trimedArgs = VBA.Trim$(args)
-    If autoReturn Then
-        trimedBody = "return " & VBA.Trim$(funcBody)
+    trimedArgs = VBA.Strings.Trim$(inArguments)
+    If inAutoReturn Then
+        trimedBody = "return " & VBA.Strings.Trim$(inFunctionBody)
     Else
-        trimedBody = VBA.Trim$(funcBody)
+        trimedBody = VBA.Strings.Trim$(inFunctionBody)
     End If
 
     Dim cacheKey As String
@@ -83,37 +91,36 @@ Public Function NewFunc( _
         Call funcCache.Add(cacheKey, createFunc(trimedArgs, trimedBody))
     End If
 
-    Set NewFunc = funcCache.Item(cacheKey)
+    Set Func = funcCache.Item(cacheKey)
 
 End Function
 
 
 Public Function Parse(jsExpression As String) As Variant
     Dim evalFunc As Object
-    Set evalFunc = Me.NewFunc("s", "eval('('+s+')')")
+    Set evalFunc = Me.Func("s", "eval('('+s+')')")
     SetVar(Parse) = evalFunc(jsExpression)
 End Function
 
 
 Public Function IsJsObject(ByVal iObject As Object) As Boolean
-    Let IsJsObject = Me.NewFunc("o", "o instanceof Object")(iObject)
+    Let IsJsObject = Me.Func("o", "o instanceof Object")(iObject)
 End Function
 
 
 
+'汎用代入関数。
 Private Property Let SetVar( _
         ByRef outVariable As Variant, _
-        inExpression As Variant _
+              inExpression As Variant _
     )
-    Select Case True
-        Case VBA.IsObject(inExpression), _
-             VBA.VarType(inExpression) = vbDataObject
-            
-            Set outVariable = inExpression
-            
-        Case Else
-            Let outVariable = inExpression
-            
-    End Select
+    '判定の順番は変更不可。
+    If VBA.Information.IsObject(inExpression) Then
+        Set outVariable = inExpression
+    ElseIf VBA.Information.VarType(inExpression) = VBA.VbVarType.vbDataObject Then
+        Set outVariable = inExpression
+    Else
+        Let outVariable = inExpression
+    End If
 End Property
 
