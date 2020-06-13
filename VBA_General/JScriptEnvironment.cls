@@ -12,8 +12,12 @@ Attribute VB_Exposed = True
     
     'JScript を 64bit の VBA からも使用できるようにしたクラス。
     'MSHTML.HTMLDocument 上で JScript を実行することで ScriptContorl の 32bit 制限を回避する。
-Public aaaaa
+
 Option Explicit
+
+Private rootHtmlDoc As MSHTML.HTMLDocument
+Private ie10SupportDoc_ As MSHTML.HTMLDocument
+
 
 'Instance JScript Function object.
 
@@ -47,15 +51,16 @@ Public Function Func( _
     ) As Object
     
     Const EXEC_SCRIPT = _
-            "this.createFunc=" & _
+            "this.document.createFunc=" & _
                 "function(args,funcBody){" & _
                     "return new Function(args,funcBody);}"
     
     '各種初期化
     '関数オブジェクトのキャッシュ
     Static funcCache As Object 'As Scripting.Dictionary
-    If funcCache Is Nothing Then _
+    If funcCache Is Nothing Then
         Set funcCache = VBA.Interaction.CreateObject("Scripting.Dictionary")
+    End If
     
     'JScript実行環境。参照を保持しないとインスタンスしたfunctionオブジェクトも消える
     Static htmlDoc    As Object 'As MSHTML.HTMLDocument
@@ -64,12 +69,12 @@ Public Function Func( _
     If htmlDoc Is Nothing Then
         Call funcCache.RemoveAll
         Set htmlDoc = VBA.Interaction.CreateObject("htmlfile")
-        
+        Set ie10SupportDoc_ = createIE10SupportHtmlDoc(htmlDoc)
         'JScriptのグローバル変数に関数を定義
-        Call htmlDoc.parentWindow.execScript(EXEC_SCRIPT)
+        Call ie10SupportDoc_.parentWindow.execScript(EXEC_SCRIPT)
         
         '作成した関数を静的変数に保管（書き換え防止）
-        Set createFunc = htmlDoc.parentWindow.createFunc
+        Set createFunc = ie10SupportDoc_.createFunc
     End If
 
 
@@ -108,6 +113,82 @@ Public Function IsJsObject(ByVal iObject As Object) As Boolean
 End Function
 
 
+Private Function createIE10SupportHtmlDoc(inParentHtmlDoc As MSHTML.HTMLDocument) As MSHTML.HTMLDocument
+    Const IE10HtmlSource = _
+        "<!DOCTYPE html>" & vbCrLf & _
+        "<!-- saved from url=(0017)http://localhost/ -->" & vbCrLf & _
+        "<html>" & _
+            "<head>" & _
+                "<meta http-equiv='x-ua-compatible' content='IE=10' />" & _
+                "<script type='text/vbscript'>" & _
+                    "Option Explicit" & vbCrLf & _
+                    "Public Function vbTypeName(a)" & vbCrLf & _
+                        "vbTypeName = TypeName(a)" & vbCrLf & _
+                    "End Function" & _
+                "</script>" & _
+            "</head>" & _
+            "<body>" & _
+            "</body>" & _
+        "</html>"
+    
+    Dim fso As Scripting.FileSystemObject
+    Set fso = VBA.Interaction.CreateObject("Scripting.FileSystemObject")
+    
+    Dim tmpHtmlPath As String
+    tmpHtmlPath = generateTempFilePath("html")
+    
+    With fso.CreateTextFile(tmpHtmlPath, Overwrite:=False)
+        .WriteLine IE10HtmlSource
+        .Close
+    End With
+    
+    Set createIE10SupportHtmlDoc = LoadHtmlDocumentFormUrl(tmpHtmlPath, inParentHtmlDoc)
+    
+    fso.DeleteFile tmpHtmlPath
+    
+End Function
+
+
+Private Function LoadHtmlDocumentFormUrl(inUrl As String, inParentHtmlDoc As MSHTML.HTMLDocument) As MSHTML.HTMLDocument
+    Dim doc As MSHTML.HTMLDocument
+    Set doc = inParentHtmlDoc.createDocumentFromUrl(inUrl, VBA.Constants.vbNullString) 'https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa752523(v%3Dvs.85)
+    
+    Const ExpectReadyState = "complete"
+    Dim i As Long
+    For i = 1 To 10 ^ 6
+        If doc.readyState = ExpectReadyState Then
+            Set LoadHtmlDocumentFormUrl = doc
+            Exit Function
+        End If
+        Call VBA.Interaction.DoEvents
+    Next i
+    
+    Err.Raise 5, , "Can't load complete document from " & inUrl
+End Function
+
+
+Private Function generateTempFilePath(inExt As String) As String
+    Dim fso As Scripting.FileSystemObject
+    Set fso = VBA.Interaction.CreateObject("Scripting.FileSystemObject")
+    
+    Const fsTemporaryFolder = 2
+    Dim tmpFolderPath As String
+    tmpFolderPath = fso.GetSpecialFolder(fsTemporaryFolder).Path
+    
+    Dim i As Long
+    For i = 1 To 100000
+        Dim tmpFilePath As String
+        tmpFilePath = fso.BuildPath(tmpFolderPath, fso.GetTempName() & "." & inExt)
+        Select Case True
+            Case fso.FileExists(tmpFilePath), fso.FolderExists(tmpFilePath)
+                'Next
+            Case Else 'Not exists.
+                Let generateTempFilePath = tmpFilePath
+                Exit Function
+        End Select
+    Next i
+    Err.Raise 735
+End Function
 
 '汎用代入関数。
 Private Property Let SetVar( _
