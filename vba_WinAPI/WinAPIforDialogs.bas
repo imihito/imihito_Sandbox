@@ -56,6 +56,7 @@ Public Function ShowTaskDialog( _
     ) As VBA.VbMsgBoxResult
 Rem .DESCRIPTION
 Rem TaskDialog を表示する。
+Rem [VBAでTaskDialogを表示してみた - Qiita](https://qiita.com/nukie_53/items/8642f74ba4902e941ff2 "VBAでTaskDialogを表示してみた - Qiita")
 Rem .PARAMETER inContent
 Rem ダイアログ内に表示するメッセージ。
 Rem .PARAMETER inButtons
@@ -88,3 +89,22 @@ Rem ユーザーが押したボタン。
         )
     Debug.Assert hr = S_OK
 End Function
+
+Private Sub samples_TaskDialog()
+
+Dim userClickedButton As VBA.VbMsgBoxResult
+If False Then
+userClickedButton = ShowTaskDialog("inContent")
+
+userClickedButton = ShowTaskDialog("ボタンをたくさん表示", tdOKCancel Or tdRetryCancel Or tdYesNoCancel)
+userClickedButton = ShowTaskDialog("アイコン無し", tdYesNo, tdNone)
+userClickedButton = ShowTaskDialog("盾のアイコン", tdYesNoCancel, tdShield)
+userClickedButton = ShowTaskDialog("青色のｉのアイコン" & vbLf & "vbInformation 相当", tdOKCancel, tdInformation)
+userClickedButton = ShowTaskDialog("黄色の△のアイコン" & vbLf & "vbExclamation 相当", tdRetryCancel, tdWarning)
+userClickedButton = ShowTaskDialog("赤色の×のアイコン" & vbLf & "vbCritical 相当", tdClose Or tdCancel, tdError)
+
+End If
+
+userClickedButton = ShowTaskDialog("本文部分", inHeader:="見出し部分")
+
+End Sub
